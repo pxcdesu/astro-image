@@ -4,6 +4,11 @@ from tkinter import *
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk, ImageEnhance
 import numpy as np
+import subprocess
+import webbrowser
+import requests  # 追加
+import zipfile  # 追加
+import shutil  # 追加
 
 # 定数
 DEFAULT_CONTRAST = 1.0
@@ -38,6 +43,7 @@ class AstroImageApp:
         # UIの構築
         self.create_preview_frame()
         self.create_settings_frame()
+        self.create_update_button()
         self.bind_events()
 
     def create_preview_frame(self):
@@ -120,6 +126,44 @@ class AstroImageApp:
                                       command=self.export_images, 
                                       state="disabled")
         self.export_button.pack(pady=20)
+
+    def create_update_button(self):
+        # アップデートボタンの追加
+        update_button = ttk.Button(self.root, text="アップデート", command=self.update_application)
+        update_button.pack(pady=10)
+
+    def update_application(self):
+        # アップデート処理
+        try:
+            # GitHubから最新のリリースをダウンロード
+            url = "https://github.com/ユーザー名/リポジトリ名/archive/refs/heads/main.zip"
+            response = requests.get(url)
+            zip_path = os.path.join(os.path.dirname(__file__), "update.zip")
+            with open(zip_path, "wb") as f:
+                f.write(response.content)
+
+            # ZIPファイルを解凍
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(os.path.dirname(__file__))
+
+            # 解凍されたフォルダを取得
+            extracted_folder = os.path.join(os.path.dirname(__file__), "リポジトリ名-main")
+
+            # 現在のファイルを削除して新しいファイルを移動
+            current_file = os.path.abspath(__file__)
+            os.remove(current_file)
+            for filename in os.listdir(extracted_folder):
+                shutil.move(os.path.join(extracted_folder, filename), os.path.dirname(current_file))
+
+            # 解凍されたフォルダを削除
+            shutil.rmtree(extracted_folder)
+            os.remove(zip_path)
+
+            # アプリケーションを再起動
+            subprocess.Popen(["python", current_file])
+            self.root.quit()
+        except Exception as e:
+            messagebox.showerror("Error", f"アップデート中にエラーが発生しました: {e}")
 
     def bind_events(self):
         # 入力が更新された際にエクスポートボタンの状態を確認
